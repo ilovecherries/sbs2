@@ -3,6 +3,7 @@ html {
 	background: #FEE; /* (for debug) */
 	color: var(--T-color);
 	font: var(--T-font);
+	color-scheme: var(--T-scheme);
 	line-height: normal;
 	/* alternate glyphs for K and k (whatever) */
 	font-feature-settings: "ss04" on;
