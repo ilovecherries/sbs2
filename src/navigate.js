@@ -19,7 +19,6 @@ class ViewSlot {
 		})
 		// todo: dragging should shrink either the left or right neighbor
 		// depending on which half of the header you dragged
-		new ResizeBar(this.$root, this.$header, 'right', null)
 		
 		this.loading = null // Generator
 		this.view = null // BaseView
@@ -27,11 +26,12 @@ class ViewSlot {
 		this.url = null // String
 		this.load_state = false // Boolean
 		this.child = null // ?ViewSlot
-		this.child_orientation = false
-		this.set_child(null, false)
-		this.parent = parent // ?ViewSlot
+		this.child_orientation = true
 		this.$child = null // HTMLElement, manually added by ViewSlot
+		this.$handle = null // HTMLElement, manually added by ViewSlot
+		this.parent = parent // ?ViewSlot
 		Object.seal(this)
+		this.set_child(this.child)
 	}
 	unload() {
 		this.cancel()
@@ -54,7 +54,7 @@ class ViewSlot {
 			this.$header_buttons.append(a)
 		}
 	}
-	set_child(child, orientation) {
+	set_child(child, orientation=this.child_orientation) {
 		this.child = child
 		this.set_orientation(orientation)
 		if (!child) {
@@ -64,11 +64,18 @@ class ViewSlot {
 			this.$child = child.$root
 			this.$root.append(this.$child)
 		}
-		this.$child.className = "COL FILL"
+		this.$child.className = "COL"
 	}
 	set_orientation(orientation) {
 		this.child_orientation = orientation
-		this.$root.className = orientation ? "FILL ROW" : "FILL COL"
+		this.$root.className = orientation ? "ROW" : "COL"
+		if (this.$handle) {
+			this.$handle.remove()
+		}
+		this.$handle = document.createElement('div')
+		this.$handle.classList.add('resize-handle')
+		this.$root.prepend(this.$handle)
+		new ResizeBar(this.$content, this.$handle, orientation ? 'left' : 'down', null)
 	}
 	// todo: this should support users etc. too?
 	set_entity_title(entity) {
@@ -103,7 +110,7 @@ class ViewSlot {
 		this.cancel()
 		this.loading = this.handle_view2(this.location).run(()=>{
 			// misc stuff to run after loading:
-			this.set_orientation(true) // Boolean (false: -, true: |)
+			this.set_orientation(this.child_orientation) // Boolean (false: |, true: -)
 			Sidebar.close_fullscreen()
 			Lp.flush_statuses(()=>{})
 			// TODO! statuses fail to update sometimes!! on page load maybe
@@ -212,7 +219,7 @@ class ViewSlot {
 }
 ViewSlot.template = HTML`
 <view-slot class='COL FILL'>
-	<view-content $=content class='COL FILL'>
+	<view-content $=content class='COL'>
 		<view-header $=header class='bar ellipsis' tabindex=0 accesskey="q">
 			<h1 $=title class='textItem'></h1>
 			<div class='header-buttons item' $=header_buttons></div>
@@ -366,7 +373,7 @@ const Nav = NAMESPACE({
 			let url = urls[i]
 			let slot = this.slots[i] || (this.slots[i] = new ViewSlot(old_slot))
 			if (old_slot !== null)
-				old_slot.set_child(slot)
+				old_slot.set_child(slot, true)
 			if (this.root_slot === null)
 				this.root_slot = slot
 			old_slot = slot
@@ -380,10 +387,6 @@ const Nav = NAMESPACE({
 		this.slots.length = urls.length
 		
 		window.history.replaceState(null, "sbs2", "#"+this.make_url())
-		// for (let i=0; i<this.slots.length; i++) {
-		// 	if (changed[i])
-		// 		this.slots[i].load()
-		// }
 		this.root_slot.load()
 	},
 	
