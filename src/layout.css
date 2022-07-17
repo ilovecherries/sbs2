@@ -68,8 +68,8 @@ view-slot > view-header {
 	flex: 0mm;
 }
 view-slot {
-	display: flex;
-	flex-flow: column;
+	/* display: flex;
+	flex-flow: column; */
 	min-width: 4rem !important;
 	width: 50%;
 }

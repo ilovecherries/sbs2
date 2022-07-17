@@ -289,7 +289,7 @@ class ChatView extends BaseView {
 }
 ChatView.track_resize_2 = new ResizeTracker('width')
 ChatView.template = HTML`
-<view-root class='COL'>
+<view-root class='COL FILL'>
 	<div $=resize_handle class='userlist2' style='--bar-height:2.4375rem'><div $=userlist class='userlist'></div></div>
 	<div class='FILL SLIDES'>
 		<scroll-outer class='shown' $=outer>

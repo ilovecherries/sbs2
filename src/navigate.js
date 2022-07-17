@@ -6,11 +6,16 @@
 // todo: also we have BaseView.location and ViewSlot.location,
 // kinda redundant? idk (consider: if/when can/should they differ?)
 class ViewSlot {
-	constructor() {
+	constructor(parent=null) {
 		ViewSlot.template(this)
 		this.$view = null
 		do_when_ready(x=>{
-			$main_slides.append(this.$root)
+			if (parent) {
+				// parent?.$child?.append(this.$root)
+				parent?.set_child(this, this.child_orientation)
+			} else {
+				$main_slides.append(this.$root)
+			}
 		})
 		// todo: dragging should shrink either the left or right neighbor
 		// depending on which half of the header you dragged
@@ -21,6 +26,11 @@ class ViewSlot {
 		this.location = null // SbsLocation
 		this.url = null // String
 		this.load_state = false // Boolean
+		this.child = null // ?ViewSlot
+		this.child_orientation = false
+		this.set_child(null, false)
+		this.parent = parent // ?ViewSlot
+		this.$child = null // HTMLElement, manually added by ViewSlot
 		Object.seal(this)
 	}
 	unload() {
@@ -43,6 +53,22 @@ class ViewSlot {
 			a.textContent = x.label
 			this.$header_buttons.append(a)
 		}
+	}
+	set_child(child, orientation) {
+		this.child = child
+		this.set_orientation(orientation)
+		if (!child) {
+			return
+		}
+		if (!this.$child) {
+			this.$child = child.$root
+			this.$root.append(this.$child)
+		}
+		this.$child.className = "COL FILL"
+	}
+	set_orientation(orientation) {
+		this.child_orientation = orientation
+		this.$root.className = orientation ? "FILL ROW" : "FILL COL"
 	}
 	// todo: this should support users etc. too?
 	set_entity_title(entity) {
@@ -72,9 +98,12 @@ class ViewSlot {
 		return true
 	}
 	load() {
+		// run child load if it exists
+		this.child?.load()
 		this.cancel()
 		this.loading = this.handle_view2(this.location).run(()=>{
 			// misc stuff to run after loading:
+			this.set_orientation(true) // Boolean (false: -, true: |)
 			Sidebar.close_fullscreen()
 			Lp.flush_statuses(()=>{})
 			// TODO! statuses fail to update sometimes!! on page load maybe
@@ -171,7 +200,7 @@ class ViewSlot {
 		this.loading_state(false, true)
 		//throw "heck darn"
 		this.$view = view.$root
-		this.$root.append(view.$root)
+		this.$content.append(view.$root)
 		if (view.Visible)
 			view.Visible()
 		
@@ -182,11 +211,13 @@ class ViewSlot {
 	}
 }
 ViewSlot.template = HTML`
-<view-slot class='COL'>
-	<view-header $=header class='bar ellipsis' tabindex=0 accesskey="q">
-		<h1 $=title class='textItem'></h1>
-		<div class='header-buttons item' $=header_buttons></div>
-	</view-header>
+<view-slot class='COL FILL'>
+	<view-content $=content class='COL FILL'>
+		<view-header $=header class='bar ellipsis' tabindex=0 accesskey="q">
+			<h1 $=title class='textItem'></h1>
+			<div class='header-buttons item' $=header_buttons></div>
+		</view-header>
+	</view-content>
 </view-slot>
 `
 
@@ -206,6 +237,8 @@ Markup.renderer.url_scheme['sbs:'] = (url)=>{
 
 const Nav = NAMESPACE({
 	slots: [],
+	// a pointer to the root slot
+	root_slot: null,
 	
 	focused_slot() {
 		if (!this.slots[0]) {
@@ -327,9 +360,16 @@ const Nav = NAMESPACE({
 	update_from_fragment(fragment) {
 		let urls = fragment ? fragment.split("~") : []
 		let changed = []
+		let old_slot = null
+		this.root_slot = null
 		for (let i=0; i<urls.length; i++) {
 			let url = urls[i]
-			let slot = this.slots[i] || (this.slots[i] = new ViewSlot())
+			let slot = this.slots[i] || (this.slots[i] = new ViewSlot(old_slot))
+			if (old_slot !== null)
+				old_slot.set_child(slot)
+			if (this.root_slot === null)
+				this.root_slot = slot
+			old_slot = slot
 			changed[i] = slot.set_url(url)
 		}
 		// delete extra slots
@@ -340,10 +380,11 @@ const Nav = NAMESPACE({
 		this.slots.length = urls.length
 		
 		window.history.replaceState(null, "sbs2", "#"+this.make_url())
-		for (let i=0; i<this.slots.length; i++) {
-			if (changed[i])
-				this.slots[i].load()
-		}
+		// for (let i=0; i<this.slots.length; i++) {
+		// 	if (changed[i])
+		// 		this.slots[i].load()
+		// }
+		this.root_slot.load()
 	},
 	
 	start() {
