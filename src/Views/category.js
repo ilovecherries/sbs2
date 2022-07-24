@@ -83,18 +83,25 @@ class CategoryView extends PageView {
 		if (page !== undefined) {
 			this.Slot.set_entity_title(page)
 			this.Slot.add_header_links([
-				// TODO: attach the category id as the parentId
 				{ label:"create page", href:"#editpage?parent=" + page.id },
 				{ label: "edit", href: "#editpage/" + page.id },
 			])
 		}
-		else
+		else {
 			this.Slot.set_title("Root")
+			this.Slot.add_header_links([
+				{ label:"create page", href:"#editpage?parent=0" },
+			])
+		}
 
 		if (page) {
 			this.update_page(page, user)
 			this.update_watch(watch[0])
+		} else {
+			this.$visit_page.remove()
+			this.$parent_header.remove()
 		}
+
 		this.$page.innerText = this.pid
 
 		this.$categories.fill(
@@ -137,7 +144,7 @@ CategoryView.template = HTML`
 				<button $=visit_page>Visit Page</button>
 			</div>
 		</div>
-		<h2>parent</h2>
+		<h2 $=parent_header>parent</h2>
 		<div $=parent></div>
 		<h2>categories</h2>
 		<div $=categories></div>
