@@ -35,6 +35,7 @@ class PageView extends BaseView {
 			this.$textarea.value = View.lost
 		this.editing = null
 		this.pre_edit = null
+		this.replying_to = null
 		
 		this.$textarea.enterKeyHint = !['newline', 'newline, strip trailing'].includes(Settings.values.chat_enter) ? "send" : "enter" // uh this won't update though... need a settings change watcher
 		this.$textarea_container.onkeydown = e=>{
@@ -78,6 +79,13 @@ class PageView extends BaseView {
 			if (e.detail.action=='edit') {
 				e.stopPropagation()
 				this.edit_comment(e.detail.data)
+			}
+		})
+
+		this.$root.addEventListener('message_control', e=>{
+			if (e.detail.action==='reply') {
+				e.stopPropagation()
+				this.reply_to(e?.detail?.data?.id ?? null)
 			}
 		})
 	}
@@ -305,6 +313,7 @@ class PageView extends BaseView {
 		if (this.editing)
 			this.edit_comment(null)
 		else {
+			this.reply_to(null)
 			Edit.clear(this.$textarea)
 			this.textarea_resize()
 		}
@@ -333,6 +342,8 @@ class PageView extends BaseView {
 		data.text = this.$textarea.value
 		if (['submit, strip trailing', 'newline, strip trailing'].includes(Settings.values.chat_enter) && data.text.endsWith("\n"))
 			data.text = data.text.slice(0, -1)
+		if (this.replying_to)
+			data.values.replyId = this.replying_to
 		
 		return data
 	}
@@ -350,6 +361,20 @@ class PageView extends BaseView {
 			this.$markup.value = markup
 		}
 	}
+	reply_to(comment_id=null) {
+		if (comment_id === null) {
+			this.replying_to = null
+			this.$replying_to.fill()
+			this.Flag('replying', false)
+			return
+		}
+
+		this.replying_to = comment_id
+		const filled = document.createElement('span')
+		filled.innerText = comment_id
+		this.$replying_to.fill(filled)
+		this.Flag('replying', true)
+	}
 	// todo: um why is this one function ... idk.. no shared code anymore
 	edit_comment(comment=null) {
 		if (!comment) {
@@ -358,6 +383,7 @@ class PageView extends BaseView {
 				this.write_input(this.pre_edit)
 				this.Flag('editing', false)
 			}
+			this.reply_to(null)
 			return
 		}
 		// todo: maybe this should be a stack? and then if you edit another post while already in edit mode... sometHing ..
@@ -365,6 +391,7 @@ class PageView extends BaseView {
 			this.pre_edit = this.read_input()
 		this.editing = comment
 		this.Flag('editing', true)
+		this.reply_to(comment?.values?.replyId ?? null)
 		// do this after the flag, so the width is right
 		this.write_input(comment) 
 		// todo: maybe also save/restore cursor etc.
@@ -396,6 +423,9 @@ PageView.template = HTML`
 			<div class='chat-bottom' tabindex=0></div>
 		</scroll-inner>
 	</auto-scroller>
+	<div class='ROW chat-reply-control'>
+		Replying to message <span $=replying_to></span>
+	</div>
 	<div class='inputPane ROW'>
 		<div class='chat-edit-controls COL'>
 			<input $=markup placeholder="markup" style="width:50px;">

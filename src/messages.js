@@ -282,6 +282,7 @@ class MessageList {
 		}
 		btn('info', "⚙️")
 		btn('edit', "✏️")
+		btn('reply', "✏️")
 		
 		let listen = (ev, fn)=>{
 			document.addEventListener(ev, fn, {passive: true})

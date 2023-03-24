@@ -735,6 +735,9 @@ view-root.f-editing .chatTextarea {
 view-root:not(.f-editing) .chat-edit-controls {
 	display: none;
 }
+view-root:not(.f-replying) .chat-reply-control {
+	display: none;
+}
 .chatTextarea[disabled] {
 	background: silver;
 }
